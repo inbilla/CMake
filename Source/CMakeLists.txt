@@ -450,7 +450,7 @@ if (WIN32)
       cmGlobalVisualStudio14Generator.h
       cmGlobalVisualStudio14Generator.cxx
       cmGlobalVisualStudioGenerator.cxx
-      cmGlobalVisualStudioGenerator.h
+      cmGlobalGenerator.h
       cmIDEFlagTable.h
       cmIDEOptions.cxx
       cmIDEOptions.h
@@ -492,6 +492,14 @@ set(SRCS ${SRCS}
   cmNinjaNormalTargetGenerator.h
   cmNinjaUtilityTargetGenerator.cxx
   cmNinjaUtilityTargetGenerator.h
+  )
+
+# Fastbuild support
+set(SRCS ${SRCS}
+  cmGlobalFastbuildGenerator.h
+  cmGlobalFastbuildGenerator.cxx
+  cmLocalFastbuildGenerator.cxx
+  cmLocalFastbuildGenerator.h
   )
 if(WIN32 AND NOT CYGWIN)
   set_source_files_properties(cmcldeps.cxx PROPERTIES COMPILE_DEFINITIONS _WIN32_WINNT=0x0501)

@@ -74,6 +74,7 @@
 #include "cmGlobalUnixMakefileGenerator3.h"
 #include "cmGlobalNinjaGenerator.h"
 #include "cmExtraCodeLiteGenerator.h"
+#include "cmGlobalFastbuildGenerator.h"
 
 #if !defined(CMAKE_BOOT_MINGW)
 # include "cmExtraCodeBlocksGenerator.h"
@@ -1846,6 +1847,8 @@ void cmake::AddDefaultGenerators()
     cmGlobalUnixMakefileGenerator3::NewFactory());
   this->Generators.push_back(
     cmGlobalNinjaGenerator::NewFactory());
+  this->Generators.push_back(
+    cmGlobalFastbuildGenerator::NewFactory());
 #if defined(CMAKE_USE_WMAKE)
   this->Generators.push_back(
     cmGlobalWatcomWMakeGenerator::NewFactory());
