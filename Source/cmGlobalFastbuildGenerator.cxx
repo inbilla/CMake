@@ -271,11 +271,16 @@ public:
 		return excluded;
 	}
 
+#define FASTBUILD_DOLLAR_TAG "FASTBUILD_DOLLAR_TAG"
+
 	static void UnescapeFastbuildVariables(std::string& string)
 	{
 		// Unescape the Fastbuild configName symbol with $
-		cmSystemTools::ReplaceString(string, "$$ConfigName$$", "$ConfigName$");
-		cmSystemTools::ReplaceString(string, "^$ConfigName^$", "$ConfigName$");
+		cmSystemTools::ReplaceString(string, "^", "^^");
+		cmSystemTools::ReplaceString(string, "$$", "^$");
+ 		cmSystemTools::ReplaceString(string, FASTBUILD_DOLLAR_TAG, "$");
+		//cmSystemTools::ReplaceString(string, "$$ConfigName$$", "$ConfigName$");
+		//cmSystemTools::ReplaceString(string, "^$ConfigName^$", "$ConfigName$");
 	}
 
 	static void ResolveFastbuildVariables(std::string& string, const std::string& configName)
@@ -635,14 +640,14 @@ public:
 		vars.Language = linkLanguage.c_str();
 
 		std::string responseFlag;
-		vars.Objects = "$FB_INPUT_1_PLACEHOLDER$";
+		vars.Objects = FASTBUILD_DOLLAR_TAG "FB_INPUT_1_PLACEHOLDER" FASTBUILD_DOLLAR_TAG;
 		vars.LinkLibraries = "";
 		
-		vars.ObjectDir = "$TargetOutDir$";
-		vars.Target = "$FB_INPUT_2_PLACEHOLDER$";
+		vars.ObjectDir = FASTBUILD_DOLLAR_TAG "TargetOutDir" FASTBUILD_DOLLAR_TAG;
+		vars.Target = FASTBUILD_DOLLAR_TAG "FB_INPUT_2_PLACEHOLDER" FASTBUILD_DOLLAR_TAG;
 
-		vars.TargetSOName = "$TargetOutSO$";
-		vars.TargetPDB = "$TargetOutDir$$TargetNamePDB$";
+		vars.TargetSOName = FASTBUILD_DOLLAR_TAG"TargetOutSO" FASTBUILD_DOLLAR_TAG;
+		vars.TargetPDB = FASTBUILD_DOLLAR_TAG "TargetOutDir" FASTBUILD_DOLLAR_TAG FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
 
 		// Setup the target version.
 		std::string targetVersionMajor;
@@ -661,9 +666,9 @@ public:
 		vars.TargetVersionMajor = targetVersionMajor.c_str();
 		vars.TargetVersionMinor = targetVersionMinor.c_str();
 
-		vars.Defines = "$CompileDefineFlags$";
-		vars.Flags = "$TargetFlags$";
-		vars.LinkFlags = "$LinkFlags$ $LinkPath$";
+		vars.Defines = FASTBUILD_DOLLAR_TAG "CompileDefineFlags" FASTBUILD_DOLLAR_TAG;
+		vars.Flags = FASTBUILD_DOLLAR_TAG "TargetFlags" FASTBUILD_DOLLAR_TAG;
+		vars.LinkFlags = FASTBUILD_DOLLAR_TAG "LinkFlags" FASTBUILD_DOLLAR_TAG " " FASTBUILD_DOLLAR_TAG "LinkPath" FASTBUILD_DOLLAR_TAG;
 		// Rule for linking library/executable.
 		std::vector<std::string> linkCmds;
 		ComputeLinkCmds(linkCmds, lg, target, gt, configName);
@@ -701,13 +706,13 @@ public:
 		cmLocalGenerator::RuleVariables compileObjectVars;
 		compileObjectVars.CMTarget = &target;
 		compileObjectVars.Language = language.c_str();
-		compileObjectVars.Source = "$FB_INPUT_1_PLACEHOLDER$";
-		compileObjectVars.Object = "$FB_INPUT_2_PLACEHOLDER$";
-		compileObjectVars.ObjectDir = "$TargetOutputDir$";
+		compileObjectVars.Source = FASTBUILD_DOLLAR_TAG "FB_INPUT_1_PLACEHOLDER" FASTBUILD_DOLLAR_TAG;
+		compileObjectVars.Object = FASTBUILD_DOLLAR_TAG "FB_INPUT_2_PLACEHOLDER" FASTBUILD_DOLLAR_TAG;
+		compileObjectVars.ObjectDir = FASTBUILD_DOLLAR_TAG "TargetOutputDir" FASTBUILD_DOLLAR_TAG;
 		compileObjectVars.ObjectFileDir = "";
 		compileObjectVars.Flags = "";
 		compileObjectVars.Defines = "";
-		compileObjectVars.TargetCompilePDB = "$TargetNamePDB$";
+		compileObjectVars.TargetCompilePDB = FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
 
 		// Rule for compiling object file.
 		std::string compileCmdVar = "CMAKE_";
@@ -1852,6 +1857,9 @@ public:
 		}
 		*/
 
+		std::for_each(inputs.begin(), inputs.end(), &Detection::UnescapeFastbuildVariables);
+		std::for_each(mergedOutputs.begin(), mergedOutputs.end(), &Detection::UnescapeFastbuildVariables);
+
 		context.fc.WriteCommand("Exec", Quote(targetName));
 		context.fc.WritePushScope();
 		{
@@ -2415,7 +2423,8 @@ public:
 					{
 						return;
 					}
-					Detection::UnescapeFastbuildVariables(linkCmd);
+					// No need to do this, because the function above has already escaped things appropriately
+					//Detection::UnescapeFastbuildVariables(linkCmd);
 
 					std::string executable;
 					std::string flags;
@@ -2837,7 +2846,7 @@ void cmGlobalFastbuildGenerator::ComputeTargetObjectDirectory(
 //----------------------------------------------------------------------------
 const char* cmGlobalFastbuildGenerator::GetCMakeCFGIntDir() const
 {
-	return "$ConfigName$";
+	return FASTBUILD_DOLLAR_TAG "ConfigName" FASTBUILD_DOLLAR_TAG;
 }
 
 //----------------------------------------------------------------------------

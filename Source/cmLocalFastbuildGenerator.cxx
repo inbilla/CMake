@@ -18,14 +18,15 @@
 #ifdef _WIN32
 #include "windows.h"
 #endif
-
+#define FASTBUILD_DOLLAR_TAG "FASTBUILD_DOLLAR_TAG"
 //----------------------------------------------------------------------------
 cmLocalFastbuildGenerator::cmLocalFastbuildGenerator()
 {
 #ifdef _WIN32
 	this->WindowsShell = true;
 #endif
-	this->TargetImplib = "$TargetOutputImplib$";
+	this->TargetImplib = FASTBUILD_DOLLAR_TAG "TargetOutputImplib" FASTBUILD_DOLLAR_TAG;
+	//this->LinkScriptShell = true;
 }
 
 //----------------------------------------------------------------------------
