@@ -1269,7 +1269,9 @@ public:
 	static void DetectCompilerExtraFiles(const std::string& compilerID,
 		const std::string& version, std::vector<std::string>& extraFiles)
 	{
-		// Output a list of files that are relative to $CompilerRoot$.
+		// Output a list of files that are relative to $CompilerRoot$
+		return;
+
 		if (compilerID == "MSVC")
 		{
 			if (version.compare(0, 3, "18.") != std::string::npos)
