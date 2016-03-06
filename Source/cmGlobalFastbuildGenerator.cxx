@@ -1832,6 +1832,7 @@ public:
 			std::string args;
 			ccg.AppendArguments(i, args);
 			cmSystemTools::ReplaceString(args, "$$", "$");
+			cmSystemTools::ReplaceString(args, FASTBUILD_DOLLAR_TAG, "$");
 #ifdef _WIN32
 			//in windows batch, '%' is a special character that needs to be doubled to be escaped
 			cmSystemTools::ReplaceString(args, "%", "%%");
