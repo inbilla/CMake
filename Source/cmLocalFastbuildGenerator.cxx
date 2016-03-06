@@ -103,7 +103,7 @@ void cmLocalFastbuildGenerator::AppendFlagEscape(std::string& flags,
 	std::string escapedFlag = this->EscapeForShell(rawFlag);
 	// Other make systems will remove the double $ but
 	// fastbuild uses ^$ to escape it. So switch to that.
-	cmSystemTools::ReplaceString(escapedFlag, "$$", "^$");
+	//cmSystemTools::ReplaceString(escapedFlag, "$$", "^$");
 	this->AppendFlags(flags, escapedFlag);
 }
 
