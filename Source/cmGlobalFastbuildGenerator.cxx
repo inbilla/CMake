@@ -1243,8 +1243,11 @@ public:
 	static bool isConfigDependant(const cmCustomCommandGenerator& ccg)
 	{
 		typedef std::vector<std::string> StringVector;
-		const StringVector &outputs = ccg.GetOutputs();
-		const StringVector &byproducts = ccg.GetByproducts();
+		StringVector outputs = ccg.GetOutputs();
+		StringVector byproducts = ccg.GetByproducts();
+
+		std::for_each(outputs.begin(), outputs.end(), &Detection::UnescapeFastbuildVariables);
+		std::for_each(byproducts.begin(), byproducts.end(), &Detection::UnescapeFastbuildVariables);
 		
 		// Make sure that the outputs don't depend on the config name
 		for (StringVector::const_iterator iter = outputs.begin();
