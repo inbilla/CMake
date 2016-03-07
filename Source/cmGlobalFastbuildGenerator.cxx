@@ -1840,6 +1840,7 @@ public:
 			Detection::ResolveFastbuildVariables(args, configName);
 
 			std::string command(ccg.GetCommand(i));
+			cmSystemTools::ReplaceString(command, FASTBUILD_DOLLAR_TAG, "$");
 			Detection::ResolveFastbuildVariables(command, configName);
 
 			scriptFile << command << args << std::endl;
@@ -2452,6 +2453,8 @@ public:
 						std::vector<std::string> extraDependencies;
 						Detection::DetectTargetObjectDependencies( context.self, target, configName, extraDependencies );
 						Detection::DetectTargetLinkDependencies(target, configName, extraDependencies);
+
+						std::for_each(extraDependencies.begin(), extraDependencies.end(), Detection::UnescapeFastbuildVariables);
 
 						context.fc.WriteArray("Libraries", 
 							Wrap(extraDependencies, "'", "'"),
