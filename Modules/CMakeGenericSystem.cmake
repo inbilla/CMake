@@ -67,6 +67,11 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
   mark_as_advanced(CMAKE_EXPORT_COMPILE_COMMANDS)
 endif()
 
+
+if(CMAKE_GENERATOR MATCHES "Fastbuild")
+  set(CMAKE_NO_BUILD_TYPE 1)
+endif()
+
 # GetDefaultWindowsPrefixBase
 #
 # Compute the base directory for CMAKE_INSTALL_PREFIX based on:

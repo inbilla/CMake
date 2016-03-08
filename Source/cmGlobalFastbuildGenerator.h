@@ -46,6 +46,8 @@ public:
 	virtual cmLocalGenerator *CreateLocalGenerator();
 	virtual std::string GetName() const;
 
+	virtual bool IsMultiConfig() { return true; }
+
 	virtual void AppendDirectoryForConfig(
 		const std::string& prefix,
 		const std::string& config,
