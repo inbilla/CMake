@@ -864,7 +864,8 @@ static const struct CompileLanguageNode : public cmGeneratorExpressionNode
       {
       if(genName.find("Makefiles") == std::string::npos &&
               genName.find("Ninja") == std::string::npos &&
-              genName.find("Watcom WMake") == std::string::npos)
+              genName.find("Watcom WMake") == std::string::npos &&
+              genName.find("Fastbuild") == std::string::npos)
         {
         reportError(context, content->GetOriginalExpression(),
             "$<COMPILE_LANGUAGE:...> not supported for this generator.");
