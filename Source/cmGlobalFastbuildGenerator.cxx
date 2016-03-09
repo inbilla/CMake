@@ -401,6 +401,8 @@ public:
 		std::string targetOutputReal;
 		std::string targetOutputImplib;
 		std::string targetOutputDir;
+		std::string targetOutputPDBDir;
+		std::string targetOutputCompilePDBDir;
 	};
 
 	static void DetectOutput(
@@ -464,11 +466,30 @@ public:
 				targetNamesOut.targetNameReal;
 		}
 
+		if (target.GetType() == cmTarget::EXECUTABLE ||
+			target.GetType() == cmTarget::STATIC_LIBRARY ||
+			target.GetType() == cmTarget::SHARED_LIBRARY ||
+			target.GetType() == cmTarget::MODULE_LIBRARY)
+		{
+			targetNamesOut.targetOutputPDBDir = target.GetPDBDirectory(configName);
+			targetNamesOut.targetOutputPDBDir += "/";
+		}
+		if (target.GetType() <= cmTarget::OBJECT_LIBRARY)
+		{
+			targetNamesOut.targetOutputCompilePDBDir = target.GetCompilePDBPath(configName);
+			if (targetNamesOut.targetOutputCompilePDBDir.empty())
+			{
+				targetNamesOut.targetOutputCompilePDBDir = target.GetSupportDirectory() + "/";
+			}
+		}
+
 		// Make sure all obey the correct slashes
 		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutput);
 		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutputImplib);
 		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutputReal);
 		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutputDir);
+		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutputPDBDir);
+		cmSystemTools::ConvertToOutputSlashes(targetNamesOut.targetOutputCompilePDBDir);
 	}
 
 	static void ComputeLinkCmds(std::vector<std::string> & linkCmds,
@@ -647,7 +668,7 @@ public:
 		vars.Target = FASTBUILD_DOLLAR_TAG "FB_INPUT_2_PLACEHOLDER" FASTBUILD_DOLLAR_TAG;
 
 		vars.TargetSOName = FASTBUILD_DOLLAR_TAG"TargetOutSO" FASTBUILD_DOLLAR_TAG;
-		vars.TargetPDB = FASTBUILD_DOLLAR_TAG "TargetOutDir" FASTBUILD_DOLLAR_TAG FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
+		vars.TargetPDB = FASTBUILD_DOLLAR_TAG "TargetOutPDBDir" FASTBUILD_DOLLAR_TAG FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
 
 		// Setup the target version.
 		std::string targetVersionMajor;
@@ -712,7 +733,7 @@ public:
 		compileObjectVars.ObjectFileDir = "";
 		compileObjectVars.Flags = "";
 		compileObjectVars.Defines = "";
-		compileObjectVars.TargetCompilePDB = FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
+		compileObjectVars.TargetCompilePDB = FASTBUILD_DOLLAR_TAG "TargetOutCompilePDBDir" FASTBUILD_DOLLAR_TAG FASTBUILD_DOLLAR_TAG "TargetNamePDB" FASTBUILD_DOLLAR_TAG;
 
 		// Rule for compiling object file.
 		std::string compileCmdVar = "CMAKE_";
@@ -2129,12 +2150,16 @@ public:
 				context.fc.WriteVariable("TargetOutputImplib", Quote(targetNames.targetOutputImplib));
 				context.fc.WriteVariable("TargetOutputReal", Quote(targetNames.targetOutputReal));
 				context.fc.WriteVariable("TargetOutDir", Quote(targetNames.targetOutputDir));
+				context.fc.WriteVariable("TargetOutCompilePDBDir", Quote(targetNames.targetOutputCompilePDBDir));
+				context.fc.WriteVariable("TargetOutPDBDir", Quote(targetNames.targetOutputPDBDir));
 
 				if (target.GetType() != cmTarget::OBJECT_LIBRARY)
 				{
 					// on Windows the output dir is already needed at compile time
 					// ensure the directory exists (OutDir test)
 					EnsureDirectoryExists(targetNames.targetOutputDir, context);
+					EnsureDirectoryExists(targetNames.targetOutputPDBDir, context);
+					EnsureDirectoryExists(targetNames.targetOutputCompilePDBDir, context);
 				}
 			}
 
@@ -2232,7 +2257,9 @@ public:
 					std::string compileCmd;
 					Detection::DetectBaseCompileCommand(compileCmd,
 						lg, target, objectGroupLanguage);
-					Detection::UnescapeFastbuildVariables(compileCmd);
+
+					// No need to double unescape the variables
+					//Detection::UnescapeFastbuildVariables(compileCmd);
 
 					std::string executable;
 					Detection::SplitExecutableAndFlags(compileCmd, executable, baseCompileFlags);
