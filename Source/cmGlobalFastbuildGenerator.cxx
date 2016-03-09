@@ -73,9 +73,7 @@ The following tests FAILED:
 	133 - ExternalProjectUpdateSetup (Failed)
 	134 - ExternalProjectUpdate (Failed)
 	151 - Plugin (Failed)
-	156 - PDBDirectoryAndName (Failed)
 	157 - PrecompiledHeader (Failed)
-	158 - ModuleDefinition (Failed)
 	184 - CTestConfig.Script.Debug (Failed)
 	185 - CTestConfig.Dashboard.Debug (Failed)
 	186 - CTestConfig.Script.MinSizeRel (Failed)
@@ -2417,6 +2415,16 @@ public:
 					Detection::UnescapeFastbuildVariables(linkPath);
 
 					linkPath = frameworkPath + linkPath;
+
+					if(target.IsExecutableWithExports())
+					{
+						const char* defFileFlag = lg->GetMakefile()->GetDefinition("CMAKE_LINK_DEF_FILE_FLAG");
+						const std::string defFile = gt->GetModuleDefinitionFile(configName);
+						if(!defFile.empty())
+						{
+							linkFlags += defFileFlag + defFile;
+						}
+					}
 
 					context.fc.WriteVariable("LinkPath", "'" + linkPath + "'");
 					context.fc.WriteVariable("LinkLibs", "'" + linkLibs + "'");
