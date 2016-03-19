@@ -2803,8 +2803,8 @@ void cmGlobalFastbuildGenerator::Generate()
 void cmGlobalFastbuildGenerator::GenerateBuildCommand(
 	std::vector<std::string>& makeCommand,
 	const std::string& makeProgram,
-	const std::string& /*projectName*/,
-	const std::string& /*projectDir*/,
+	const std::string& projectName,
+	const std::string& projectDir,
 	const std::string& targetName,
 	const std::string& config,
 	bool /*fast*/, bool /*verbose*/,
@@ -2846,6 +2846,13 @@ void cmGlobalFastbuildGenerator::GenerateBuildCommand(
 		targetSelected += "-" + configSelected;
 	}
 
+	// Hunt the fbuild.bff file in the directory above
+	std::string configFile;
+	if (!cmSystemTools::FileExists(projectDir + "fbuild.bff"))
+	{
+		configFile = cmSystemTools::FileExistsInParentDirectories("fbuild.bff", projectDir.c_str(), "");
+	}
+
 	// Build the command
 	makeCommand.push_back(makeProgramSelected);
 	
@@ -2859,6 +2866,12 @@ void cmGlobalFastbuildGenerator::GenerateBuildCommand(
 
 	makeCommand.push_back("-showcmds");
 	makeCommand.push_back("-ide");
+
+	if (!configFile.empty())
+	{
+		makeCommand.push_back("-config");
+		makeCommand.push_back(configFile);
+	}
 
 	// Add the target-config to the command
 	if (!targetSelected.empty())
