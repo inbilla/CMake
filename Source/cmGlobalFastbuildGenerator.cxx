@@ -814,9 +814,9 @@ public:
 		{
 			const std::string & configName = *iter;
 
-			std::vector<cmSourceFile*> sourceFiles;
-			gt->GetSourceFiles(sourceFiles, configName);
-			for (std::vector<cmSourceFile*>::const_iterator
+			std::vector<const cmSourceFile*> sourceFiles;
+			gt->GetObjectSources(sourceFiles, configName);
+			for (std::vector<const cmSourceFile*>::const_iterator
 				i = sourceFiles.begin(); i != sourceFiles.end(); ++i)
 			{
 				const std::string& lang = (*i)->GetLanguage();
@@ -1845,7 +1845,13 @@ public:
 		const std::string shellExt = ".sh";
 #endif
 
-		std::string scriptFileName(ccg.GetWorkingDirectory() + targetName + ".bat");
+		std::string workingDirectory = ccg.GetWorkingDirectory();
+		if (workingDirectory.empty())
+		{
+			workingDirectory = makefile->GetCurrentOutputDirectory();
+		}
+
+		std::string scriptFileName(workingDirectory + targetName + ".bat");
 		cmsys::ofstream scriptFile(scriptFileName.c_str());
 
 		for (unsigned i = 0; i != ccg.GetNumberOfCommands(); ++i) 
@@ -1895,8 +1901,10 @@ public:
 #else
 			context.fc.WriteVariable("ExecExecutable", Quote(scriptFileName));
 #endif
-			if(!ccg.GetWorkingDirectory().empty())
-				context.fc.WriteVariable("ExecWorkingDir", Quote(ccg.GetWorkingDirectory()));
+			if(!workingDirectory.empty())
+			{
+				context.fc.WriteVariable("ExecWorkingDir", Quote(workingDirectory));
+			}
 
 			if (inputs.empty())
 			{
