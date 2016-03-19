@@ -2153,13 +2153,15 @@ public:
 				context.fc.WriteVariable("TargetOutCompilePDBDir", Quote(targetNames.targetOutputCompilePDBDir));
 				context.fc.WriteVariable("TargetOutPDBDir", Quote(targetNames.targetOutputPDBDir));
 
+				// Compile directory always needs to exist
+				EnsureDirectoryExists(targetNames.targetOutputCompilePDBDir, context);
+
 				if (target.GetType() != cmTarget::OBJECT_LIBRARY)
 				{
 					// on Windows the output dir is already needed at compile time
 					// ensure the directory exists (OutDir test)
 					EnsureDirectoryExists(targetNames.targetOutputDir, context);
 					EnsureDirectoryExists(targetNames.targetOutputPDBDir, context);
-					EnsureDirectoryExists(targetNames.targetOutputCompilePDBDir, context);
 				}
 			}
 
