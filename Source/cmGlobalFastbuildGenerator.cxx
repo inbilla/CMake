@@ -1816,8 +1816,12 @@ public:
 				if (!Detection::isConfigDependant(ccg))
 				{
 					// This command has already been generated.
-					// But under a different name
-					// So just drop an alias.
+					// But under a different name so setup an alias to redirect
+					// No merged outputs, so this command must always be run.
+					// Make it's name unique to its host target
+					targetName += "-";
+					targetName += hostTargetName;
+
 					std::vector<std::string> targets;
 					targets.push_back(*findResult->second.begin());
 
