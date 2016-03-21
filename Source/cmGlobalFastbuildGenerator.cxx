@@ -1390,7 +1390,7 @@ public:
 		cmLocalFastbuildGenerator* lg;
 	};
 	typedef std::map<const cmTarget*, TargetGenerationContext> TargetContextMap;
-	typedef std::map<const cmCustomCommand*, std::string> CustomCommandAliasMap;
+	typedef std::map<const cmCustomCommand*, std::set<std::string> > CustomCommandAliasMap;
 	typedef Detection::OrderedTargetSet OrderedTargets;
 
 	struct GenerationContext
@@ -1570,8 +1570,10 @@ public:
 
 		// Sort targets
 
-		WriteTargetDefinitions( context );
-		WriteAliases( context );
+		WriteTargetDefinitions( context, false );
+		WriteAliases( context, false );
+		WriteTargetDefinitions( context, true );
+		WriteAliases( context, true );
 	}
 
 	static void WritePlaceholders(GenerationContext& context)
@@ -1754,7 +1756,8 @@ public:
 		cmLocalFastbuildGenerator *lg,
 		cmTarget& target,
 		const std::string& configName,
-		const std::string& targetName)
+		std::string& targetName,
+		const std::string& hostTargetName)
 	{
 		cmMakefile* makefile = lg->GetMakefile();
 		
@@ -1801,24 +1804,41 @@ public:
 			// Check if this custom command has already been output.
 			// If it has then just drop an alias here to the original
 			CustomCommandAliasMap::iterator findResult = context.customCommandAliases.find(cc);
-			if (findResult != context.customCommandAliases.end() &&
-				!Detection::isConfigDependant(ccg))
+			if (findResult != context.customCommandAliases.end())
 			{
-				// This command has already been generated. 
-				// So just drop an alias.
-				std::vector<std::string> targets;
-				targets.push_back(findResult->second);
-
-				context.fc.WriteCommand("Alias", Quote(targetName));
-				context.fc.WritePushScope();
+				const std::set<std::string>& aliases = findResult->second;
+				if (aliases.find(targetName) != aliases.end())
 				{
-					context.fc.WriteArray("Targets",
-						Wrap(targets));
+					// This target has already been generated
+					// with the correct name somewhere else.
+					return;
+				}	
+				if (!Detection::isConfigDependant(ccg))
+				{
+					// This command has already been generated.
+					// But under a different name
+					// So just drop an alias.
+					std::vector<std::string> targets;
+					targets.push_back(*findResult->second.begin());
+
+					context.fc.WriteCommand("Alias", Quote(targetName));
+					context.fc.WritePushScope();
+					{
+						context.fc.WriteArray("Targets",
+							Wrap(targets));
+					}
+					context.fc.WritePopScope();
+					return;
 				}
-				context.fc.WritePopScope();
-				return;
 			}
-			context.customCommandAliases[cc] = targetName;
+			context.customCommandAliases[cc].insert(targetName);
+		}
+		else
+		{
+			// No merged outputs, so this command must always be run.
+			// Make it's name unique to its host target
+			targetName += "-";
+			targetName += hostTargetName;
 		}
 		
 		// Take the dependencies listed and split into targets and files.
@@ -1849,6 +1869,7 @@ public:
 		if (workingDirectory.empty())
 		{
 			workingDirectory = makefile->GetCurrentOutputDirectory();
+			workingDirectory += "/";
 		}
 
 		std::string scriptFileName(workingDirectory + targetName + ".bat");
@@ -1870,7 +1891,7 @@ public:
 			cmSystemTools::ReplaceString(command, FASTBUILD_DOLLAR_TAG, "$");
 			Detection::ResolveFastbuildVariables(command, configName);
 
-			scriptFile << command << args << std::endl;
+			scriptFile << Quote(command, "\"") << args << std::endl;
 		}
 
 		// Write out an exec command
@@ -1908,7 +1929,7 @@ public:
 
 			if (inputs.empty())
 			{
-				inputs.push_back("dummy-in");
+				//inputs.push_back("dummy-in");
 			}
 			context.fc.WriteArray("ExecInput", Wrap(inputs));
 
@@ -1970,9 +1991,11 @@ public:
 
 				std::stringstream customCommandTargetName;
 				customCommandTargetName << baseName << (commandCount++);
-				customCommandTargets.push_back(customCommandTargetName.str());
-
-				WriteCustomCommand(context, &cc, lg, target, configName, customCommandTargetName.str());
+				
+				std::string customCommandTargetNameStr = customCommandTargetName.str();
+				WriteCustomCommand(context, &cc, lg, target, configName, customCommandTargetNameStr,
+					targetName);
+				customCommandTargets.push_back(customCommandTargetNameStr);
 			}
 
 			// Write an alias for this object group to group them all together
@@ -2026,7 +2049,7 @@ public:
 
 				// Write the custom command build rules for each configuration
 				int commandCount = 1;
-				std::string customCommandNameBase = targetName + "-CustomCommand-" + configName + "-";
+				std::string customCommandNameBase = "CustomCommand-" + configName + "-";
 				for (std::vector<cmSourceFile const*>::iterator ccIter = customCommands.begin();
 					ccIter != customCommands.end(); ++ccIter)
 				{
@@ -2035,10 +2058,13 @@ public:
 					std::stringstream customCommandTargetName;
 					customCommandTargetName << customCommandNameBase << (commandCount++);
 					customCommandTargetName << "-" << cmSystemTools::GetFilenameName(sourceFile->GetFullPath());;
-					customCommandTargets.push_back(customCommandTargetName.str());
-
+					
+					std::string customCommandTargetNameStr = customCommandTargetName.str();
 					WriteCustomCommand(context, sourceFile->GetCustomCommand(),
-						lg, target, configName, customCommandTargetName.str());
+						lg, target, configName, customCommandTargetNameStr, 
+						targetName);
+
+					customCommandTargets.push_back(customCommandTargetNameStr);
 				}
 
 				std::string customCommandGroupName = targetName + "-CustomCommands-" + configName;
@@ -2618,9 +2644,10 @@ public:
 		WriteTargetDefinition(context, lg, target);
 	}
 
-	static void WriteTargetDefinitions(GenerationContext& context)
+	static void WriteTargetDefinitions(GenerationContext& context,
+		bool outputGlobals)
 	{
-		context.fc.WriteSectionHeader("Target Definitions");
+		context.fc.WriteSectionHeader((outputGlobals)?"Global Target Definitions":"Target Definitions");
 
 		// Now iterate each target in order
 		for (OrderedTargets::iterator targetIter = context.orderedTargets.begin(); 
@@ -2642,6 +2669,17 @@ public:
 			cmTarget* target = findResult->second.target;
 			cmLocalFastbuildGenerator* lg = findResult->second.lg;
 
+			if (target->GetType() == cmTarget::GLOBAL_TARGET)
+			{
+				if (!outputGlobals)
+					continue;
+			}
+			else
+			{
+				if (outputGlobals)
+					continue;
+			}
+
 			switch (target->GetType())
 			{
 				case cmTarget::EXECUTABLE:
@@ -2661,7 +2699,8 @@ public:
 		}
 	}
 	
-	static void WriteAliases(GenerationContext& context)
+	static void WriteAliases(GenerationContext& context,
+		bool outputGlobals)
 	{
 		context.fc.WriteSectionHeader("Aliases");
 
@@ -2693,6 +2732,17 @@ public:
 			cmTarget* target = findResult->second.target;
 			const std::string & targetName = target->GetName();
 
+			if (target->GetType() == cmTarget::GLOBAL_TARGET)
+			{
+				if (!outputGlobals)
+					continue;
+			}
+			else
+			{
+				if (outputGlobals)
+					continue;
+			}
+
 			// Define compile flags
 			std::vector<std::string>::const_iterator
 				iter = context.self->GetConfigurations().begin(),
@@ -2711,18 +2761,30 @@ public:
 			}
 		}
 
-		context.fc.WriteComment("Per config");
-		for (TargetListMap::iterator iter = perConfig.begin();
-			iter != perConfig.end(); ++iter)
+		if (!outputGlobals)
 		{
-			const std::string & configName = iter->first;
-			const std::vector<std::string> & targets = iter->second;
+			context.fc.WriteComment("Per config");
+			std::vector<std::string> aliasTargets;
+			for (TargetListMap::iterator iter = perConfig.begin();
+				iter != perConfig.end(); ++iter)
+			{
+				const std::string & configName = iter->first;
+				const std::vector<std::string> & targets = iter->second;
 
-			context.fc.WriteCommand("Alias", "'" + configName + "'");
-			context.fc.WritePushScope();
-			context.fc.WriteArray("Targets", 
-				Wrap(targets, "'", "'"));
-			context.fc.WritePopScope();
+				context.fc.WriteCommand("Alias", Quote(configName));
+				context.fc.WritePushScope();
+				context.fc.WriteArray("Targets", 
+					Wrap(targets, "'", "'"));
+				context.fc.WritePopScope();
+
+				aliasTargets.clear();
+				aliasTargets.push_back(configName);
+				context.fc.WriteCommand("Alias", Quote("ALL_BUILD-" + configName));
+				context.fc.WritePushScope();
+				context.fc.WriteArray("Targets", 
+					Wrap(aliasTargets, "'", "'"));
+				context.fc.WritePopScope();
+			}
 		}
 
 		context.fc.WriteComment("Per targets");
@@ -2739,12 +2801,15 @@ public:
 			context.fc.WritePopScope();
 		}
 
-		context.fc.WriteComment("All");
-		context.fc.WriteCommand("Alias", "'All'");
-		context.fc.WritePushScope();
-		context.fc.WriteArray("Targets", 
-			Wrap(context.self->GetConfigurations(), "'", "'"));
-		context.fc.WritePopScope();
+		if (!outputGlobals)
+		{
+			context.fc.WriteComment("All");
+			context.fc.WriteCommand("Alias", "'All'");
+			context.fc.WritePushScope();
+			context.fc.WriteArray("Targets", 
+				Wrap(context.self->GetConfigurations(), "'", "'"));
+			context.fc.WritePopScope();
+		}
 	}
 };
 
