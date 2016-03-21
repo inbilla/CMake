@@ -1060,16 +1060,28 @@ public:
 				cmMakefile* makefile = lg->GetMakefile();
 				cmCustomCommandGenerator ccg(*cc, configName, makefile);
 
+				std::string workingDirectory = ccg.GetWorkingDirectory();
+				if (workingDirectory.empty())
+				{
+					workingDirectory = makefile->GetCurrentOutputDirectory();
+					workingDirectory += "/";
+				}
+
 				// Take the dependencies listed and split into targets and files.
 				const std::vector<std::string> &depends = ccg.GetDepends();
 				for (std::vector<std::string>::const_iterator iter = depends.begin();
 					iter != depends.end(); ++iter)
 				{
-					const std::string& dep = *iter;
+					std::string dep = *iter;
 
 					bool isTarget = gg->FindTarget(dep) != NULL;
 					if (!isTarget)
 					{
+						if (!cmSystemTools::FileIsFullPath(dep.c_str()))
+						{
+							dep = workingDirectory + dep;
+						}
+
 						inputs.push_back(dep);
 					}
 				}
